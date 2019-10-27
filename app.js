@@ -15,7 +15,7 @@ const storage = multer.diskStorage({
   },
 })
 
-const upload = multer({ storage: storage }).single('avatar')
+const upload = multer({ storage: storage }).single('file-upload')
 
 app.set('view engine', 'ejs')
 
@@ -23,19 +23,19 @@ app.get('/', (req, res) => {
   res.render('index')
 })
 
-app.post('/upload', (req, res) => {
+app.post('/', (req, res) => {
   upload(req, res, err => {
   jimp.read(`./uploads/${req.file.originalname}`)
     .then(image =>{
       image
         .greyscale()
         .invert()
-        .write(`./uploads/inverted-${req.file.originalname}`), imgCallback(`${req.file.originalname}`)
+        .write(`./uploads/inverted-${req.file.originalname}`), imgCallback(`${req.file.originalname}`, res)
     })
   })
 })
 
-function imgCallback(name) {
+function imgCallback(name, res) {
   console.log(`./uploads/inverted-${name}`)
   fs.readFile(
     `./uploads/inverted-${name}`,
@@ -45,22 +45,19 @@ function imgCallback(name) {
         .recognize(data, 'eng', { tessjs_create_tsv: '1' })
         .progress(progress => {
           console.log(progress)
-          // res.redirect('/download')
         })
         .then(result => {
-          fs.writeFile(`${__dirname}/temp.txt`, result.text, err => {
+          fs.writeFile(`${__dirname}/downloads/${name}.txt`, result.text, err => {
             if (err) return console.log(err)
-            console.log('done')
+            res.send(result.text)
           })
         })
-        .finally(() => worker.terminate())
+        .finally((result) => {
+          worker.terminate()
+        })
     }
   )
 }
-
-app.get('/download', (req, res) => {
-  const file = `${__dirname}/tesseract.js-ocr-result.pdf`
-})
 
 const PORT = 4000 || process.env.PORT
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
